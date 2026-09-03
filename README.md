@@ -2,7 +2,7 @@
 
 ![FastAPI logo](https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png)
 
-This is a repository only for FastAPI, for Python i have an another repository in GitHub [click here]('https://github.com/JesusPereira-ctrl/python-devtalles')
+This is a repository only for FastAPI, for Python i have an another repository in GitHub [click here](https://github.com/JesusPereira-ctrl/python-devtalles)
 
 ## Extensions for VsCode
 
