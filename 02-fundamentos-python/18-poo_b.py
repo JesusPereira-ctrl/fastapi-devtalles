@@ -24,9 +24,29 @@ class BankAccount(ABC):
         return f'Saldo actual: ${self.__balance}'
 
 
-account = BankAccount('Ricardo', 1000)  # Abstracción
+class SavingAccount(BankAccount):  # Herencia
+    def withdraw(self, amount):
+        penalty = amount * 0.05
+        total = amount + penalty
+        if total <= self._get_balance():
+            self._set_balance(self._get_balance() - total)
+        else:
+            print('Fondos insuficientes en la cuenta de ahorro')
 
-account.deposit(500)
-# account.withdraw(700)
 
-print(account.check_balance())
+class PayrollAccount(BankAccount):  # Herencia
+    def withdraw(self, amount):
+        if amount <= self._get_balance():
+            self._set_balance(self._get_balance() - amount)
+        else:
+            print('Fondos insuficientes en la cuenta de nómina')
+
+
+savings = SavingAccount('Ricardo', 1000)
+payroll = PayrollAccount('Ricardo', 1000)
+
+savings.withdraw(100)
+payroll.withdraw(100)
+
+print('Cuenta de ahorro:', savings.check_balance())
+print('Cuenta de nómina:', payroll.check_balance())
