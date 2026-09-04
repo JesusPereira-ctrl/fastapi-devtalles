@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Query, Body, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from fastapi import FastAPI, Query, HTTPException
+from pydantic import BaseModel, Field, field_validator, EmailStr
 from typing import Optional, List, Union
 
 app = FastAPI(title='Mini Blog')
@@ -23,9 +23,25 @@ BLOG_POST = [
 ]
 
 
+class Tag(BaseModel):
+    name: str = Field(
+        ...,
+        min_length=2,
+        max_length=30,
+        description='Nombre de la etiqueta'
+    )
+
+
+class Author(BaseModel):
+    name: str
+    email: EmailStr
+
+
 class PostBase(BaseModel):
     title: str
     content: str
+    tags: Optional[List[Tag]] = []
+    author: Optional[Author] = None
 
 
 class PostCreate(BaseModel):
@@ -42,6 +58,8 @@ class PostCreate(BaseModel):
         description='Contenido del post (mínimo 10 caracteres)',
         examples=['Este es un contenido válido porque tiene 10 caracteres o más']
     )
+    tags: List[Tag] = []
+    author: Optional[Author] = None
 
     @field_validator('title')
     @classmethod
@@ -98,7 +116,13 @@ def get_post(post_id: int, include_content: bool = Query(default=True, descripti
 @app.post('/posts', response_model=PostPublic, response_description='Post creado (OK)')
 def create_post(post: PostCreate):
     new_id = (BLOG_POST[-1]['id'] + 1) if BLOG_POST else 1
-    new_post = {'id': new_id, 'title': post.title, 'content': post.content}
+    new_post = {
+        'id': new_id,
+        'title': post.title,
+        'content': post.content,
+        'tags': [tag.model_dump() for tag in post.tags],
+        'author': post.author.model_dump() if post.author else None
+    }
     BLOG_POST.append(new_post)
     return new_post
 
