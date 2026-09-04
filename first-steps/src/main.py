@@ -91,7 +91,16 @@ def home():
 
 
 @app.get('/posts', response_model=List[PostPublic])
-def list_posts(query: str | None = Query(default=None, description='Texto para buscar por título')):
+def list_posts(
+    query: Optional[str] = Query(
+        default=None,
+        description='Texto para buscar por título',
+        alias='search',
+        min_length=3,
+        max_length=50,
+        pattern=r'^[\w\sáéíóúÁÉÍÓÚüÜ-]+$'
+    )
+):
     if query:
         return [
             post
