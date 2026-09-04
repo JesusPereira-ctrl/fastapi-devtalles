@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Path
 from pydantic import BaseModel, Field, field_validator, EmailStr
 from typing import Optional, List, Union
 
@@ -103,7 +103,19 @@ def list_posts(query: str | None = Query(default=None, description='Texto para b
 
 
 @app.get('/posts/{post_id}', response_model=Union[PostPublic, PostSummary], response_description='Post encontrado')
-def get_post(post_id: int, include_content: bool = Query(default=True, description='Incluir o no el contenido')):
+def get_post(
+    post_id: int = Path(
+        ...,
+        ge=1,
+        title='ID del post',
+        description='Identificador entero del post, Debe ser mayor a 1',
+        example=1
+    ),
+    include_content: bool = Query(
+        default=True,
+        description='Incluir o no el contenido'
+    )
+):
     for post in BLOG_POST:
         if post['id'] == post_id:
             if not include_content:
