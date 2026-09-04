@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Query, HTTPException, Path
 from pydantic import BaseModel, Field, field_validator, EmailStr
 from typing import Optional, List, Union, Literal
+from math import ceil
 
 app = FastAPI(title='Mini Blog')
 
@@ -145,12 +146,25 @@ class PostSummary(BaseModel):
     title: str
 
 
+class PaginatedPost(BaseModel):
+    page: int
+    per_page: int
+    total: int
+    total_pages: int
+    has_prev: bool
+    has_next: bool
+    order_by: Literal['id', 'title']
+    direction: Literal['asc', 'desc']
+    search: Optional[str] = None
+    items: List[PostPublic]
+
+
 @app.get('/')
 def home():
     return {'message': 'Bienvenidos a Mini Blog por Devtalles'}
 
 
-@app.get('/posts', response_model=List[PostPublic])
+@app.get('/posts', response_model=PaginatedPost)
 def list_posts(
     query: Optional[str] = Query(
         default=None,
@@ -160,16 +174,16 @@ def list_posts(
         max_length=50,
         pattern=r'^[\w\sáéíóúÁÉÍÓÚüÜ-]+$'
     ),
-    limit: int = Query(
+    per_page: int = Query(
         default=10,
         ge=1,
         le=50,
         description='Número de resultados (1-50)'
     ),
-    offset: int = Query(
-        default=0,
-        ge=0,
-        description='Elementos a saltar antes de empezar la lista'
+    page: int = Query(
+        default=1,
+        ge=1,
+        description='Número de página (>=1)'
     ),
     order_by: Literal['id', 'title'] = Query(
         default='id',
@@ -189,13 +203,41 @@ def list_posts(
             if query.lower() in post['title'].lower()
         ]
 
+    total = len(results)
+    total_pages = ceil(total / per_page) if total > 0 else 0
+
+    if total_pages == 0:
+        current_page = 1
+    else:
+        current_page = min(page, total_pages)
+
     results = sorted(
         results,
         key=lambda post: post[order_by],
         reverse=(direction == 'desc')
     )
 
-    return results[offset:offset + limit]
+    if total_pages == 0:
+        items = []
+    else:
+        start = (current_page - 1) * per_page
+        items = results[start:start + per_page]  # [10:20]
+
+    has_prev = current_page > 1
+    has_next = current_page < total_pages if total_pages > 0 else False
+
+    return PaginatedPost(
+        page=current_page,
+        per_page=per_page,
+        total=total,
+        total_pages=total_pages,
+        has_prev=has_prev,
+        has_next=has_next,
+        order_by=order_by,
+        direction=direction,
+        search=query,
+        items=items
+    )
 
 
 @app.get('/posts/{post_id}', response_model=Union[PostPublic, PostSummary], response_description='Post encontrado')
@@ -205,7 +247,7 @@ def get_post(
         ge=1,
         title='ID del post',
         description='Identificador entero del post, Debe ser mayor a 1',
-        example=1
+        examples=[1]
     ),
     include_content: bool = Query(
         default=True,
