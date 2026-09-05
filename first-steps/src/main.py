@@ -1,39 +1,14 @@
-import os
 from datetime import datetime, timezone
 from fastapi import FastAPI, Query, HTTPException, Path, status, Depends
 from pydantic import BaseModel, Field, field_validator, EmailStr, ConfigDict
 from typing import Optional, List, Union, Literal
 from math import ceil
-from sqlalchemy import create_engine, Integer, String, Text, DateTime, select, func, UniqueConstraint, ForeignKey, Table, Column
-from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column, relationship, selectinload, joinedload
+from sqlalchemy import Integer, String, Text, DateTime, select, func, UniqueConstraint, ForeignKey, Table, Column
+from sqlalchemy.orm import Session,  Mapped, mapped_column, relationship, selectinload, joinedload
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from dotenv import load_dotenv
 
 load_dotenv()
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./blog.db')
-
-engine_kwargs = {}
-
-if DATABASE_URL.startswith('sqlite'):
-    engine_kwargs['connect_args'] = {'check_same_thread': False}
-
-engine = create_engine(
-    url=DATABASE_URL,
-    echo=True,
-    future=True,
-    **engine_kwargs
-)
-
-SessionLocal = sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit=False,
-    class_=Session
-)
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 post_tags = Table(
@@ -137,14 +112,6 @@ class PostORM(Base):
 
 
 Base.metadata.create_all(bind=engine)  # dev
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 app = FastAPI(title='Mini Blog')
