@@ -156,9 +156,6 @@ def get_post(
     ),
     db: Session = Depends(get_db)
 ):
-    post_find = select(PostORM).where(PostORM.id == post_id)
-    post = db.execute(post_find).scalar_one_or_none()
-
     if not post:
         raise HTTPException(status_code=404, detail='Post no encontrado')
 
