@@ -10,4 +10,4 @@ services:
     environment:
       POSTGRES_USER: ricardocuellar
       POSTGRES_PASSWORD: 5696
-      POSTGRES_DB: deviblog
+      POSTGRES_DB: blogfastapi

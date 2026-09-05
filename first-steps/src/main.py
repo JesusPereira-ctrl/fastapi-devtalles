@@ -7,9 +7,10 @@ from math import ceil
 from sqlalchemy import create_engine, Integer, String, Text, DateTime, select, func, UniqueConstraint, ForeignKey, Table, Column
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column, relationship, selectinload, joinedload
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from dotenv import load_dotenv
 
+load_dotenv()
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./blog.db')
-print('Conectado a:', DATABASE_URL)
 
 engine_kwargs = {}
 
