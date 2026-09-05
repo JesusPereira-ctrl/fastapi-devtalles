@@ -414,18 +414,22 @@ def create_post(post: PostCreate, db: Session = Depends(get_db)):
 
 
 @app.put('/posts/{post_id}', response_model=PostPublic, response_description='Post actualizado', response_model_exclude_none=True)
-def update_post(post_id: int, data: PostUpdate):
-    for post in BLOG_POST:
-        if post['id'] == post_id:
-            payload = data.model_dump(
-                exclude_unset=True)  # {"title": "Ricardo"}
-            if 'title' in payload:
-                post['title'] = payload['title']
-            if 'content' in payload:
-                post['content'] = payload['content']
-            return post
+def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db)):
+    post = db.get(PostORM, post_id)
 
-    raise HTTPException(status_code=404, detail='Post no encontrado')
+    if not post:
+        raise HTTPException(status_code=404, detail='Post no encontrado')
+
+    updates = data.model_dump(exclude_unset=True)
+
+    for key, value in updates.items():
+        setattr(post, key, value)
+
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+
+    return post
 
 
 @app.delete('/posts/{post_id}', status_code=204)
