@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Path
 from pydantic import BaseModel, Field, field_validator, EmailStr
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Literal
+from math import ceil
 
 app = FastAPI(title='Mini Blog')
 
@@ -18,8 +19,101 @@ BLOG_POST = [
     {
         'id': 3,
         'title': 'Django vs FastAPI',
+        'content': 'FastAPI es mas rápido por x razones',
+        'tags': [
+            {
+                'name': 'Python'
+            },
+            {
+                'name': 'fastapi'
+            },
+            {
+                'name': 'Django'
+            }
+        ]
+    },
+    {
+        'id': 4,
+        'title': 'Hola desde FastAPI',
+        'content': 'Mi primer post con FastAPI'
+    },
+    {
+        'id': 5,
+        'title': 'Mi segundo Post con FastAPI',
+        'content': 'Mi segundo post con FastAPI blablabla'
+    },
+    {
+        'id': 6,
+        'title': 'Django vs FastAPI',
         'content': 'FastAPI es mas rápido por x razones'
     },
+    {
+        'id': 7,
+        'title': 'Hola desde FastAPI',
+        'content': 'Mi primer post con FastAPI'
+    },
+    {
+        'id': 8,
+        'title': 'Mi segundo Post con FastAPI',
+        'content': 'Mi segundo post con FastAPI blablabla'
+    },
+    {
+        'id': 9,
+        'title': 'Django vs FastAPI',
+        'content': 'FastAPI es mas rápido por x razones'
+    },
+    {
+        'id': 10,
+        'title': 'Hola desde FastAPI',
+        'content': 'Mi primer post con FastAPI'
+    },
+    {
+        'id': 11,
+        'title': 'Mi segundo Post con FastAPI',
+        'content': 'Mi segundo post con FastAPI blablabla'
+    },
+    {
+        'id': 12,
+        'title': 'Django vs FastAPI',
+        'content': 'FastAPI es mas rápido por x razones',
+        'tags': [
+            {
+                'name': 'Python'
+            },
+            {
+                'name': 'fastapi'
+            },
+            {
+                'name': 'Django'
+            }
+        ]
+    },
+    {
+        'id': 13,
+        'title': 'Hola desde FastAPI',
+        'content': 'Mi primer post con FastAPI'
+    },
+    {
+        'id': 14,
+        'title': 'Mi segundo Post con FastAPI',
+        'content': 'Mi segundo post con FastAPI blablabla'
+    },
+    {
+        'id': 15,
+        'title': 'Django vs FastAPI',
+        'content': 'FastAPI es mas rápido por x razones',
+        'tags': [
+            {
+                'name': 'Python'
+            },
+            {
+                'name': 'fastapi'
+            },
+            {
+                'name': 'Django'
+            }
+        ]
+    }
 ]
 
 
@@ -40,7 +134,7 @@ class Author(BaseModel):
 class PostBase(BaseModel):
     title: str
     content: str
-    tags: Optional[List[Tag]] = []
+    tags: Optional[List[Tag]] = Field(default_factory=list)  # []
     author: Optional[Author] = None
 
 
@@ -58,7 +152,7 @@ class PostCreate(BaseModel):
         description='Contenido del post (mínimo 10 caracteres)',
         examples=['Este es un contenido válido porque tiene 10 caracteres o más']
     )
-    tags: List[Tag] = []
+    tags: List[Tag] = Field(default_factory=list)  # []
     author: Optional[Author] = None
 
     @field_validator('title')
@@ -72,7 +166,7 @@ class PostCreate(BaseModel):
 
 
 class PostUpdate(BaseModel):
-    title: str
+    title: Optional[str] = Field(None, min_length=3, max_length=100)
     content: Optional[str] = None  # Optional[str] es equivalente a str | None
 
 
@@ -85,25 +179,141 @@ class PostSummary(BaseModel):
     title: str
 
 
+class PaginatedPost(BaseModel):
+    page: int
+    per_page: int
+    total: int
+    total_pages: int
+    has_prev: bool
+    has_next: bool
+    order_by: Literal['id', 'title']
+    direction: Literal['asc', 'desc']
+    search: Optional[str] = None
+    items: List[PostPublic]
+
+
 @app.get('/')
 def home():
     return {'message': 'Bienvenidos a Mini Blog por Devtalles'}
 
 
-@app.get('/posts', response_model=List[PostPublic])
-def list_posts(query: str | None = Query(default=None, description='Texto para buscar por título')):
+@app.get('/posts', response_model=PaginatedPost)
+def list_posts(
+    text: Optional[str] = Query(
+        default=None,
+        deprecated=True,
+        description='Parámetro obsoleto, usa \'query o search\' en su lugar.'
+    ),
+    query: Optional[str] = Query(
+        default=None,
+        description='Texto para buscar por título',
+        alias='search',
+        min_length=3,
+        max_length=50,
+        pattern=r'^[\w\sáéíóúÁÉÍÓÚüÜ-]+$'
+    ),
+    per_page: int = Query(
+        default=10,
+        ge=1,
+        le=50,
+        description='Número de resultados (1-50)'
+    ),
+    page: int = Query(
+        default=1,
+        ge=1,
+        description='Número de página (>=1)'
+    ),
+    order_by: Literal['id', 'title'] = Query(
+        default='id',
+        description='Campo de orden'
+    ),
+    direction: Literal['asc', 'desc'] = Query(
+        default='asc',
+        description='Dirección de orden'
+    )
+):
+    results = BLOG_POST
+
+    query = query or text
+
     if query:
-        return [
+        results = [
             post
-            for post in BLOG_POST
+            for post in results
             if query.lower() in post['title'].lower()
         ]
 
-    return BLOG_POST
+    total = len(results)
+    total_pages = ceil(total / per_page) if total > 0 else 0
+
+    if total_pages == 0:
+        current_page = 1
+    else:
+        current_page = min(page, total_pages)
+
+    results = sorted(
+        results,
+        key=lambda post: post[order_by],
+        reverse=(direction == 'desc')
+    )
+
+    if total_pages == 0:
+        items = []
+    else:
+        start = (current_page - 1) * per_page
+        items = results[start:start + per_page]  # [10:20]
+
+    has_prev = current_page > 1
+    has_next = current_page < total_pages if total_pages > 0 else False
+
+    return PaginatedPost(
+        page=current_page,
+        per_page=per_page,
+        total=total,
+        total_pages=total_pages,
+        has_prev=has_prev,
+        has_next=has_next,
+        order_by=order_by,
+        direction=direction,
+        search=query,
+        items=items
+    )
+
+
+@app.get('/posts/by-tags', response_model=List[PostPublic])
+def filter_by_tags(
+    tags: List[str] = Query(
+        ...,
+        min_length=2,
+        description='Una o mas etiquetas. Ejemplo: ?tags=python&tags=fastapi'
+    )
+):
+    tags_lower = [tag.lower() for tag in tags]
+
+    return [
+        post
+        for post in BLOG_POST
+        if any(
+            tag['name'].lower() in tags
+            for tag in post.get('tags', [])
+        )
+    ]
 
 
 @app.get('/posts/{post_id}', response_model=Union[PostPublic, PostSummary], response_description='Post encontrado')
-def get_post(post_id: int, include_content: bool = Query(default=True, description='Incluir o no el contenido')):
+def get_post(
+    post_id: int = Path(
+        ...,
+        ge=1,
+        title='ID del post',
+        description='Identificador entero del post, Debe ser mayor a 1',
+        examples=[1]
+    ),
+    include_content: bool = Query(
+        default=True,
+        description='Incluir o no el contenido'
+    )
+):
     for post in BLOG_POST:
         if post['id'] == post_id:
             if not include_content:
