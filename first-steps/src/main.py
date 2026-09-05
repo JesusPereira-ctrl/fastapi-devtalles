@@ -157,10 +157,14 @@ class Tag(BaseModel):
         description='Nombre de la etiqueta'
     )
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Author(BaseModel):
     name: str
     email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PostBase(BaseModel):
@@ -168,6 +172,8 @@ class PostBase(BaseModel):
     content: str
     tags: Optional[List[Tag]] = Field(default_factory=list)  # []
     author: Optional[Author] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PostCreate(BaseModel):
