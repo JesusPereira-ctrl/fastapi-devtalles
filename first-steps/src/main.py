@@ -71,117 +71,6 @@ def get_db():
 
 app = FastAPI(title='Mini Blog')
 
-BLOG_POST = [
-    {
-        'id': 1,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 2,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 3,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones',
-        'tags': [
-            {
-                'name': 'Python'
-            },
-            {
-                'name': 'fastapi'
-            },
-            {
-                'name': 'Django'
-            }
-        ]
-    },
-    {
-        'id': 4,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 5,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 6,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones'
-    },
-    {
-        'id': 7,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 8,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 9,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones'
-    },
-    {
-        'id': 10,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 11,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 12,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones',
-        'tags': [
-            {
-                'name': 'Python'
-            },
-            {
-                'name': 'fastapi'
-            },
-            {
-                'name': 'Django'
-            }
-        ]
-    },
-    {
-        'id': 13,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 14,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 15,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones',
-        'tags': [
-            {
-                'name': 'Python'
-            },
-            {
-                'name': 'fastapi'
-            },
-            {
-                'name': 'Django'
-            }
-        ]
-    }
-]
-
 
 class Tag(BaseModel):
     name: str = Field(
@@ -432,10 +321,14 @@ def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db)):
     return post
 
 
-@app.delete('/posts/{post_id}', status_code=204)
-def delete_post(post_id: int):
-    for index, post in enumerate(BLOG_POST):
-        if post['id'] == post_id:
-            BLOG_POST.pop(index)
-            return
-    raise HTTPException(status_code=404, detail='Post no encontrado')
+@app.delete('/posts/{post_id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(post_id: int, db: Session = Depends(get_db)):
+    post = db.get(PostORM, post_id)
+
+    if not post:
+        raise HTTPException(status_code=404, detail='Post no encontrado')
+
+    db.delete(post)
+    db.commit()
+
+    return
