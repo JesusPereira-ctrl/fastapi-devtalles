@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator, EmailStr
 from typing import Optional, List, Union, Literal
 from math import ceil
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./blog.db')
 print('Conectado a:', DATABASE_URL)
@@ -27,6 +27,19 @@ SessionLocal = sessionmaker(
     autocommit=False,
     class_=Session
 )
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 app = FastAPI(title='Mini Blog')
 
