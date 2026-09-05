@@ -4,9 +4,9 @@ from fastapi import FastAPI, Query, HTTPException, Path, status, Depends
 from pydantic import BaseModel, Field, field_validator, EmailStr, ConfigDict
 from typing import Optional, List, Union, Literal
 from math import ceil
-from sqlalchemy import create_engine, Integer, String, Text, DateTime, select, func
+from sqlalchemy import create_engine, Integer, String, Text, DateTime, select, func, UniqueConstraint
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./blog.db')
 print('Conectado a:', DATABASE_URL)
@@ -37,6 +37,7 @@ class Base(DeclarativeBase):
 
 class PostORM(Base):
     __tablename__ = 'posts'
+    __table_args__ = (UniqueConstraint('title', name='unique_post_title'),)
 
     id: Mapped[int] = mapped_column(
         Integer,
@@ -297,9 +298,18 @@ def create_post(post: PostCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_post)
         return new_post
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail='El titulo ya existe, prueba con otro'
+        )
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail='Error al crear el post')
+        raise HTTPException(
+            status_code=500,
+            detail='Error al crear el post'
+        )
 
 
 @app.put('/posts/{post_id}', response_model=PostPublic, response_description='Post actualizado', response_model_exclude_none=True)
