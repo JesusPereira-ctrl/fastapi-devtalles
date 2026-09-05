@@ -77,3 +77,30 @@ class PostRepository:
         )
 
         return self.db.execute(post_list).scalars().all()
+
+    def ensure_author(self, name: str, email: str) -> AuthorORM:
+        author_obj = self.db.execute(
+            select(AuthorORM).where(AuthorORM.email == email)
+        ).scalar_one_or_none()
+
+        if author_obj:
+            return author_obj
+
+        author_obj = AuthorORM(name=name, email=email)
+        self.db.add(author_obj)
+        self.db.flush()
+
+        return author_obj
+
+    def ensure_tag(self, name: str) -> TagORM:
+        tag_obj = self.db.execute(
+            select(TagORM).where(TagORM.name.ilike(name))
+        ).scalar_one_or_none()
+
+        if tag_obj:
+            return tag_obj
+
+        tag_obj = TagORM(name=name)
+        self.db.add(tag_obj)
+        self.db.flush()
+        return tag_obj
