@@ -79,30 +79,6 @@ def filter_by_tags(
     ),
     db: Session = Depends(get_db)
 ):
-    normalized_tag_names = [
-        tag.strip().lower()
-        for tag in tags
-        if tag.strip()
-    ]
-
-    if not normalized_tag_names:
-        return []
-
-    post_list = (
-        select(PostORM)
-        .options(
-            selectinload(PostORM.tags),
-            joinedload(PostORM.author)
-        ).where(
-            PostORM.tags.any(
-                func.lower(TagORM.name).in_(normalized_tag_names)
-            )
-        ).order_by(
-            PostORM.id.asc()
-        )
-    )
-
-    posts = db.execute(post_list).scalars().all()
 
     return posts
 

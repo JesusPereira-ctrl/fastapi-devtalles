@@ -1,7 +1,7 @@
 from math import ceil
 from typing import Literal, Optional, Tuple, List
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, joinedload
 from src.models import PostORM, AuthorORM, TagORM
 
 
@@ -51,3 +51,29 @@ class PostRepository:
         ).scalars().all()
 
         return total, items
+
+    def by_tags(self, tags: List[str]) -> List[PostORM]:
+        normalized_tag_names = [
+            tag.strip().lower()
+            for tag in tags
+            if tag.strip()
+        ]
+
+        if not normalized_tag_names:
+            return []
+
+        post_list = (
+            select(PostORM)
+            .options(
+                selectinload(PostORM.tags),
+                joinedload(PostORM.author)
+            ).where(
+                PostORM.tags.any(
+                    func.lower(TagORM.name).in_(normalized_tag_names)
+                )
+            ).order_by(
+                PostORM.id.asc()
+            )
+        )
+
+        return self.db.execute(post_list).scalars().all()
