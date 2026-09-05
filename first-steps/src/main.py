@@ -19,7 +19,18 @@ BLOG_POST = [
     {
         'id': 3,
         'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones'
+        'content': 'FastAPI es mas rápido por x razones',
+        'tags': [
+            {
+                'name': 'Python'
+            },
+            {
+                'name': 'fastapi'
+            },
+            {
+                'name': 'Django'
+            }
+        ]
     },
     {
         'id': 4,
@@ -64,7 +75,18 @@ BLOG_POST = [
     {
         'id': 12,
         'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones'
+        'content': 'FastAPI es mas rápido por x razones',
+        'tags': [
+            {
+                'name': 'Python'
+            },
+            {
+                'name': 'fastapi'
+            },
+            {
+                'name': 'Django'
+            }
+        ]
     },
     {
         'id': 13,
@@ -79,7 +101,18 @@ BLOG_POST = [
     {
         'id': 15,
         'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones'
+        'content': 'FastAPI es mas rápido por x razones',
+        'tags': [
+            {
+                'name': 'Python'
+            },
+            {
+                'name': 'fastapi'
+            },
+            {
+                'name': 'Django'
+            }
+        ]
     }
 ]
 
@@ -238,6 +271,26 @@ def list_posts(
         search=query,
         items=items
     )
+
+
+@app.get('/posts/by-tags', response_model=List[PostPublic])
+def filter_by_tags(
+    tags: List[str] = Query(
+        ...,
+        min_length=2,
+        description='Una o mas etiquetas. Ejemplo: ?tags=python&tags=fastapi'
+    )
+):
+    tags_lower = [tag.lower() for tag in tags]
+
+    return [
+        post
+        for post in BLOG_POST
+        if any(
+            tag['name'].lower() in tags
+            for tag in post.get('tags', [])
+        )
+    ]
 
 
 @app.get('/posts/{post_id}', response_model=Union[PostPublic, PostSummary], response_description='Post encontrado')
