@@ -199,6 +199,11 @@ def home():
 
 @app.get('/posts', response_model=PaginatedPost)
 def list_posts(
+    text: Optional[str] = Query(
+        default=None,
+        deprecated=True,
+        description='Parámetro obsoleto, usa \'query o search\' en su lugar.'
+    ),
     query: Optional[str] = Query(
         default=None,
         description='Texto para buscar por título',
@@ -228,6 +233,8 @@ def list_posts(
     )
 ):
     results = BLOG_POST
+
+    query = query or text
 
     if query:
         results = [
