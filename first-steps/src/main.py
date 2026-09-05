@@ -1,120 +1,153 @@
-from fastapi import FastAPI, Query, HTTPException, Path
-from pydantic import BaseModel, Field, field_validator, EmailStr
+import os
+from datetime import datetime, timezone
+from fastapi import FastAPI, Query, HTTPException, Path, status, Depends
+from pydantic import BaseModel, Field, field_validator, EmailStr, ConfigDict
 from typing import Optional, List, Union, Literal
 from math import ceil
+from sqlalchemy import create_engine, Integer, String, Text, DateTime, select, func, UniqueConstraint, ForeignKey, Table, Column
+from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column, relationship, selectinload, joinedload
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from dotenv import load_dotenv
+
+load_dotenv()
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./blog.db')
+
+engine_kwargs = {}
+
+if DATABASE_URL.startswith('sqlite'):
+    engine_kwargs['connect_args'] = {'check_same_thread': False}
+
+engine = create_engine(
+    url=DATABASE_URL,
+    echo=True,
+    future=True,
+    **engine_kwargs
+)
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+    class_=Session
+)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+post_tags = Table(
+    'post_tags',
+    Base.metadata,
+    Column(
+        'post_id',
+        ForeignKey(
+            'posts.id',
+            ondelete='CASCADE'
+        ),
+        primary_key=True
+    ),
+    Column(
+        'tag_id',
+        ForeignKey(
+            'tags.id',
+            ondelete='CASCADE'
+        ),
+        primary_key=True
+    )
+)
+
+
+class AuthorORM(Base):
+    __tablename__ = 'authors'
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+    name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+    email: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        index=True
+    )
+    posts: Mapped[List['PostORM']] = relationship(
+        back_populates='author'
+    )
+
+
+class TagORM(Base):
+    __tablename__ = 'tags'
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+    name: Mapped[str] = mapped_column(
+        String(30),
+        unique=True,
+        index=True
+    )
+    posts: Mapped[List['PostORM']] = relationship(
+        secondary=post_tags,
+        back_populates='tags',
+        lazy='selectin'
+    )
+
+
+class PostORM(Base):
+    __tablename__ = 'posts'
+    __table_args__ = (UniqueConstraint('title', name='unique_post_title'),)
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+    title: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        index=True
+    )
+    content: Mapped[str] = mapped_column(
+        Text,
+        nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now(timezone.utc)
+    )
+    author_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('authors.id')
+    )
+    author: Mapped[Optional['AuthorORM']] = relationship(
+        back_populates='posts'
+    )
+    tags: Mapped[List['TagORM']] = relationship(
+        secondary=post_tags,
+        back_populates='posts',
+        lazy='selectin',
+        passive_deletes=True
+    )
+
+
+Base.metadata.create_all(bind=engine)  # dev
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 app = FastAPI(title='Mini Blog')
-
-BLOG_POST = [
-    {
-        'id': 1,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 2,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 3,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones',
-        'tags': [
-            {
-                'name': 'Python'
-            },
-            {
-                'name': 'fastapi'
-            },
-            {
-                'name': 'Django'
-            }
-        ]
-    },
-    {
-        'id': 4,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 5,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 6,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones'
-    },
-    {
-        'id': 7,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 8,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 9,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones'
-    },
-    {
-        'id': 10,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 11,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 12,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones',
-        'tags': [
-            {
-                'name': 'Python'
-            },
-            {
-                'name': 'fastapi'
-            },
-            {
-                'name': 'Django'
-            }
-        ]
-    },
-    {
-        'id': 13,
-        'title': 'Hola desde FastAPI',
-        'content': 'Mi primer post con FastAPI'
-    },
-    {
-        'id': 14,
-        'title': 'Mi segundo Post con FastAPI',
-        'content': 'Mi segundo post con FastAPI blablabla'
-    },
-    {
-        'id': 15,
-        'title': 'Django vs FastAPI',
-        'content': 'FastAPI es mas rápido por x razones',
-        'tags': [
-            {
-                'name': 'Python'
-            },
-            {
-                'name': 'fastapi'
-            },
-            {
-                'name': 'Django'
-            }
-        ]
-    }
-]
 
 
 class Tag(BaseModel):
@@ -125,10 +158,14 @@ class Tag(BaseModel):
         description='Nombre de la etiqueta'
     )
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Author(BaseModel):
     name: str
     email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PostBase(BaseModel):
@@ -136,6 +173,8 @@ class PostBase(BaseModel):
     content: str
     tags: Optional[List[Tag]] = Field(default_factory=list)  # []
     author: Optional[Author] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PostCreate(BaseModel):
@@ -173,10 +212,14 @@ class PostUpdate(BaseModel):
 class PostPublic(PostBase):
     id: int
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class PostSummary(BaseModel):
     id: int
     title: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedPost(BaseModel):
@@ -230,38 +273,41 @@ def list_posts(
     direction: Literal['asc', 'desc'] = Query(
         default='asc',
         description='Dirección de orden'
-    )
+    ),
+    db: Session = Depends(get_db)
 ):
-    results = BLOG_POST
+    results = select(PostORM)
 
     query = query or text
 
     if query:
-        results = [
-            post
-            for post in results
-            if query.lower() in post['title'].lower()
-        ]
+        results = results.where(PostORM.title.ilike(f'%{query}%'))
 
-    total = len(results)
+    total = db.scalar(
+        select(func.count()).select_from(
+            results.subquery()
+        )
+    ) or 0
     total_pages = ceil(total / per_page) if total > 0 else 0
 
-    if total_pages == 0:
-        current_page = 1
-    else:
-        current_page = min(page, total_pages)
+    current_page = 1 if total_pages == 0 else min(page, total_pages)
 
-    results = sorted(
-        results,
-        key=lambda post: post[order_by],
-        reverse=(direction == 'desc')
+    if order_by == 'id':
+        order_col = PostORM.id
+    else:
+        order_col = func.lower(PostORM.title)
+
+    results = results.order_by(
+        order_col.asc() if direction == 'asc' else order_col.desc()
     )
 
     if total_pages == 0:
-        items = []
+        items: List[PostORM] = []
     else:
         start = (current_page - 1) * per_page
-        items = results[start:start + per_page]  # [10:20]
+        items = db.execute(
+            results.limit(per_page).offset(start)
+        ).scalars().all()
 
     has_prev = current_page > 1
     has_next = current_page < total_pages if total_pages > 0 else False
@@ -284,20 +330,37 @@ def list_posts(
 def filter_by_tags(
     tags: List[str] = Query(
         ...,
-        min_length=2,
+        min_length=1,
         description='Una o mas etiquetas. Ejemplo: ?tags=python&tags=fastapi'
-    )
+    ),
+    db: Session = Depends(get_db)
 ):
-    tags_lower = [tag.lower() for tag in tags]
-
-    return [
-        post
-        for post in BLOG_POST
-        if any(
-            tag['name'].lower() in tags
-            for tag in post.get('tags', [])
-        )
+    normalized_tag_names = [
+        tag.strip().lower()
+        for tag in tags
+        if tag.strip()
     ]
+
+    if not normalized_tag_names:
+        return []
+
+    post_list = (
+        select(PostORM)
+        .options(
+            selectinload(PostORM.tags),
+            joinedload(PostORM.author)
+        ).where(
+            PostORM.tags.any(
+                func.lower(TagORM.name).in_(normalized_tag_names)
+            )
+        ).order_by(
+            PostORM.id.asc()
+        )
+    )
+
+    posts = db.execute(post_list).scalars().all()
+
+    return posts
 
 
 @app.get('/posts/{post_id}', response_model=Union[PostPublic, PostSummary], response_description='Post encontrado')
@@ -312,50 +375,99 @@ def get_post(
     include_content: bool = Query(
         default=True,
         description='Incluir o no el contenido'
-    )
+    ),
+    db: Session = Depends(get_db)
 ):
-    for post in BLOG_POST:
-        if post['id'] == post_id:
-            if not include_content:
-                return {'id': post['id'], 'title': post['title']}
-            return post
+    post_find = select(PostORM).where(PostORM.id == post_id)
+    post = db.execute(post_find).scalar_one_or_none()
 
-    raise HTTPException(status_code=404, detail='Post no encontrado')
+    if not post:
+        raise HTTPException(status_code=404, detail='Post no encontrado')
+
+    if include_content:
+        return PostPublic.model_validate(post, from_attributes=True)
+
+    return PostSummary.model_validate(post, from_attributes=True)
 
 
-@app.post('/posts', response_model=PostPublic, response_description='Post creado (OK)')
-def create_post(post: PostCreate):
-    new_id = (BLOG_POST[-1]['id'] + 1) if BLOG_POST else 1
-    new_post = {
-        'id': new_id,
-        'title': post.title,
-        'content': post.content,
-        'tags': [tag.model_dump() for tag in post.tags],
-        'author': post.author.model_dump() if post.author else None
-    }
-    BLOG_POST.append(new_post)
-    return new_post
+@app.post('/posts', response_model=PostPublic, response_description='Post creado (OK)', status_code=status.HTTP_201_CREATED)
+def create_post(post: PostCreate, db: Session = Depends(get_db)):
+    author_obj = None
+    if post.author:
+        author_obj = db.execute(
+            select(AuthorORM).where(AuthorORM.email == post.author.email)
+        ).scalar_one_or_none()
+
+        if not author_obj:
+            author_obj = AuthorORM(
+                name=post.author.name,
+                email=post.author.email
+            )
+            db.add(author_obj)
+            db.flush()
+
+    new_post = PostORM(
+        title=post.title,
+        content=post.content,
+        author=author_obj
+    )
+
+    for tag in post.tags:
+        tag_obj = db.execute(
+            select(TagORM).where(TagORM.name.ilike(tag.name))
+        ).scalar_one_or_none()
+        if not tag_obj:
+            tag_obj = TagORM(name=tag.name)
+            db.add(tag_obj)
+            db.flush()
+        new_post.tags.append(tag_obj)
+
+    try:
+        db.add(new_post)
+        db.commit()
+        db.refresh(new_post)
+        return new_post
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail='El titulo ya existe, prueba con otro'
+        )
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail='Error al crear el post'
+        )
 
 
 @app.put('/posts/{post_id}', response_model=PostPublic, response_description='Post actualizado', response_model_exclude_none=True)
-def update_post(post_id: int, data: PostUpdate):
-    for post in BLOG_POST:
-        if post['id'] == post_id:
-            payload = data.model_dump(
-                exclude_unset=True)  # {"title": "Ricardo"}
-            if 'title' in payload:
-                post['title'] = payload['title']
-            if 'content' in payload:
-                post['content'] = payload['content']
-            return post
+def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db)):
+    post = db.get(PostORM, post_id)
 
-    raise HTTPException(status_code=404, detail='Post no encontrado')
+    if not post:
+        raise HTTPException(status_code=404, detail='Post no encontrado')
+
+    updates = data.model_dump(exclude_unset=True)
+
+    for key, value in updates.items():
+        setattr(post, key, value)
+
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+
+    return post
 
 
-@app.delete('/posts/{post_id}', status_code=204)
-def delete_post(post_id: int):
-    for index, post in enumerate(BLOG_POST):
-        if post['id'] == post_id:
-            BLOG_POST.pop(index)
-            return
-    raise HTTPException(status_code=404, detail='Post no encontrado')
+@app.delete('/posts/{post_id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(post_id: int, db: Session = Depends(get_db)):
+    post = db.get(PostORM, post_id)
+
+    if not post:
+        raise HTTPException(status_code=404, detail='Post no encontrado')
+
+    db.delete(post)
+    db.commit()
+
+    return

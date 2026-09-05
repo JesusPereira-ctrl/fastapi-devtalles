@@ -1,1 +1,4 @@
 **/__pycache__/
+blog.db
+postgres/
+.env
