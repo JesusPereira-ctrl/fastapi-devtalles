@@ -1,5 +1,5 @@
 from math import ceil
-from fastapi import APIRouter, Query, Depends, Path, HTTPException, status
+from fastapi import APIRouter, Query, Depends, Path, status, HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 from typing import List, Optional, Union, Literal
@@ -10,7 +10,7 @@ from .repository import PostRepository
 router = APIRouter(prefix='/posts', tags=['posts'])
 
 
-@router.get('/', response_model=PaginatedPost)
+@router.get('', response_model=PaginatedPost)
 def list_posts(
     text: Optional[str] = Query(
         default=None,
@@ -117,7 +117,7 @@ def get_post(
     return PostSummary.model_validate(post, from_attributes=True)
 
 
-@router.post('/', response_model=PostPublic, response_description='Post creado (OK)', status_code=status.HTTP_201_CREATED)
+@router.post('', response_model=PostPublic, response_description='Post creado (OK)', status_code=status.HTTP_201_CREATED)
 def create_post(post: PostCreate, db: Session = Depends(get_db)):
     repository = PostRepository(db)
 
