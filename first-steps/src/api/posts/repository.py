@@ -127,8 +127,14 @@ class PostRepository:
         self.db.refresh(post)
         return post
 
-    def update_post(self, post, updates):
-        pass
+    def update_post(self, post: PostORM, updates: dict) -> PostORM:
+        for key, value in updates.items():
+            setattr(post, key, value)
 
-    def delete_post(self, post):
-        pass
+        self.db.add(post)
+        self.db.refresh(post)
+
+        return post
+
+    def delete_post(self, post: PostORM) -> None:
+        self.db.delete(post)

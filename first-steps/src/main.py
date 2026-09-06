@@ -143,13 +143,6 @@ def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db)):
 
     updates = data.model_dump(exclude_unset=True)
 
-    for key, value in updates.items():
-        setattr(post, key, value)
-
-    db.add(post)
-    db.commit()
-    db.refresh(post)
-
     return post
 
 
@@ -160,7 +153,6 @@ def delete_post(post_id: int, db: Session = Depends(get_db)):
     if not post:
         raise HTTPException(status_code=404, detail='Post no encontrado')
 
-    db.delete(post)
     db.commit()
 
     return
