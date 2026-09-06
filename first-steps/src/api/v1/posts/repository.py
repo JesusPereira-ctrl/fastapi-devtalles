@@ -132,7 +132,6 @@ class PostRepository:
             setattr(post, key, value)
 
         self.db.add(post)
-        self.db.refresh(post)
 
         return post
 
