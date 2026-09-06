@@ -17,43 +17,6 @@ def home():
     return {'message': 'Bienvenidos a Mini Blog por Devtalles'}
 
 
-@app.get('/posts/by-tags', response_model=List[PostPublic])
-def filter_by_tags(
-    tags: List[str] = Query(
-        ...,
-        min_length=1,
-        description='Una o mas etiquetas. Ejemplo: ?tags=python&tags=fastapi'
-    ),
-    db: Session = Depends(get_db)
-):
-
-    return posts
-
-
-@app.get('/posts/{post_id}', response_model=Union[PostPublic, PostSummary], response_description='Post encontrado')
-def get_post(
-    post_id: int = Path(
-        ...,
-        ge=1,
-        title='ID del post',
-        description='Identificador entero del post, Debe ser mayor a 1',
-        examples=[1]
-    ),
-    include_content: bool = Query(
-        default=True,
-        description='Incluir o no el contenido'
-    ),
-    db: Session = Depends(get_db)
-):
-    if not post:
-        raise HTTPException(status_code=404, detail='Post no encontrado')
-
-    if include_content:
-        return PostPublic.model_validate(post, from_attributes=True)
-
-    return PostSummary.model_validate(post, from_attributes=True)
-
-
 @app.post('/posts', response_model=PostPublic, response_description='Post creado (OK)', status_code=status.HTTP_201_CREATED)
 def create_post(post: PostCreate, db: Session = Depends(get_db)):
     new_post = PostORM(

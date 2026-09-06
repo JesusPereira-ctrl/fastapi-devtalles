@@ -1,5 +1,5 @@
 from math import ceil
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, Path, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional, Union, Literal
 from src.core.db import get_db
@@ -45,7 +45,7 @@ def list_posts(
     ),
     db: Session = Depends(get_db)
 ):
-    repo = PostRepository(db)
+    repository = PostRepository(db)
     query = query or text
 
     total, items = repo.search(
@@ -74,3 +74,43 @@ def list_posts(
         search=query,
         items=items
     )
+
+
+@router.get('/by-tags', response_model=List[PostPublic])
+def filter_by_tags(
+    tags: List[str] = Query(
+        ...,
+        min_length=1,
+        description='Una o mas etiquetas. Ejemplo: ?tags=python&tags=fastapi'
+    ),
+    db: Session = Depends(get_db)
+):
+    repository = PostRepository(db)
+    return repository.by_tags(tags)
+
+
+@router.get('/{post_id}', response_model=Union[PostPublic, PostSummary], response_description='Post encontrado')
+def get_post(
+    post_id: int = Path(
+        ...,
+        ge=1,
+        title='ID del post',
+        description='Identificador entero del post, Debe ser mayor a 1',
+        examples=[1]
+    ),
+    include_content: bool = Query(
+        default=True,
+        description='Incluir o no el contenido'
+    ),
+    db: Session = Depends(get_db)
+):
+    repository = PostRepository(db)
+    post = repository.get(post_id)
+
+    if not post:
+        raise HTTPException(status_code=404, detail='Post no encontrado')
+
+    if include_content:
+        return PostPublic.model_validate(post, from_attributes=True)
+
+    return PostSummary.model_validate(post, from_attributes=True)
