@@ -6,6 +6,7 @@ from typing import List, Optional, Union, Literal
 from src.core.db import get_db
 from .schemas import PostPublic, PaginatedPost, PostCreate, PostUpdate, PostSummary
 from .repository import PostRepository
+from src.core.security import oauth2_scheme
 
 router = APIRouter(prefix='/posts', tags=['posts'])
 
@@ -193,3 +194,8 @@ def delete_post(post_id: int, db: Session = Depends(get_db)):
             status_code=500,
             detail='Error al eliminar el post'
         )
+
+
+@router.get('/secure')
+def secure_endpoint(token: str = Depends(oauth2_scheme)):
+    return {'message': 'Acceso con token', 'token_recibido': token}
