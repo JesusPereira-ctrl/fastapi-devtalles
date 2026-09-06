@@ -49,7 +49,7 @@ def list_posts(
     repository = PostRepository(db)
     query = query or text
 
-    total, items = repo.search(
+    total, items = repository.search(
         query,
         order_by,
         direction,
