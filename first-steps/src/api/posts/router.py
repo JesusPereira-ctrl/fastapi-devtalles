@@ -1,5 +1,6 @@
 from math import ceil
-from fastapi import APIRouter, Query, Depends, Path, HTTPException
+from fastapi import APIRouter, Query, Depends, Path, HTTPException, status
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 from typing import List, Optional, Union, Literal
 from src.core.db import get_db
@@ -114,3 +115,31 @@ def get_post(
         return PostPublic.model_validate(post, from_attributes=True)
 
     return PostSummary.model_validate(post, from_attributes=True)
+
+
+@router.post('/', response_model=PostPublic, response_description='Post creado (OK)', status_code=status.HTTP_201_CREATED)
+def create_post(post: PostCreate, db: Session = Depends(get_db)):
+    repository = PostRepository(db)
+
+    try:
+        post = repository.create_post(
+            title=post.title,
+            content=post.content,
+            author=post.author.model_dump() if post.author else None,
+            tags=[tag.model_dump() for tag in post.tags]
+        )
+        db.commit()
+        db.refresh(post)
+        return post
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail='El titulo ya existe, prueba con otro'
+        )
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail='Error al crear el post'
+        )
