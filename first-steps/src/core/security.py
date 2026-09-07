@@ -29,7 +29,7 @@ def decode_token(token: str):
     return payload
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     credentials_exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No autenticado",
