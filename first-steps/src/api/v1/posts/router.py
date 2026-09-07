@@ -1,3 +1,6 @@
+import asyncio
+import threading
+import time
 from math import ceil
 from typing import Annotated, Literal
 
@@ -12,6 +15,20 @@ from .repository import PostRepository
 from .schemas import PaginatedPost, PostCreate, PostPublic, PostSummary, PostUpdate
 
 router = APIRouter(prefix="/posts", tags=["posts"])
+
+
+@router.get("/sync")
+def sync_endpoint():
+    print("SYNC thread:", threading.current_thread().name)
+    time.sleep(8)
+    return {"message": "Función sincrona termino"}
+
+
+@router.get("/async")
+async def async_endpoint():
+    print("ASYNC thread:", threading.current_thread().name)
+    await asyncio.sleep(8)
+    return {"message": "Función asíncrona termino"}
 
 
 @router.get("", response_model=PaginatedPost)
