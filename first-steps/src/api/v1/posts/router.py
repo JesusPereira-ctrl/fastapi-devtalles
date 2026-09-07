@@ -6,21 +6,12 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.core.db import get_db
-from src.core.security import oauth2_scheme
+from src.core.security import get_current_user, oauth2_scheme
 
 from .repository import PostRepository
 from .schemas import PaginatedPost, PostCreate, PostPublic, PostSummary, PostUpdate
 
 router = APIRouter(prefix="/posts", tags=["posts"])
-
-
-def get_fake_user():
-    return {"username": "ricardo", "role": "admin"}
-
-
-@router.get("/me")
-def read_me(user: Annotated[dict, Depends(get_fake_user)]):
-    return {"user": user}
 
 
 @router.get("", response_model=PaginatedPost)
@@ -127,7 +118,11 @@ def get_post(
     response_description="Post creado (OK)",
     status_code=status.HTTP_201_CREATED,
 )
-def create_post(post: PostCreate, db: Annotated[Session, Depends(get_db)]):
+def create_post(
+    post: PostCreate,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[dict, Depends(get_current_user)],
+):
     repository = PostRepository(db)
 
     try:
@@ -157,7 +152,10 @@ def create_post(post: PostCreate, db: Annotated[Session, Depends(get_db)]):
     response_model_exclude_none=True,
 )
 def update_post(
-    post_id: int, data: PostUpdate, db: Annotated[Session, Depends(get_db)]
+    post_id: int,
+    data: PostUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[dict, Depends(get_current_user)],
 ):
     repository = PostRepository(db)
     post = repository.get(post_id)
@@ -177,7 +175,11 @@ def update_post(
 
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(post_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_post(
+    post_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[dict, Depends(get_current_user)],
+):
     repository = PostRepository(db)
     post = repository.get(post_id)
 
