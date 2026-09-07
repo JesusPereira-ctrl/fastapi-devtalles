@@ -129,7 +129,7 @@ def create_post(
         post = repository.create_post(
             title=post.title,
             content=post.content,
-            author=post.author.model_dump() if post.author else None,
+            author=user,
             tags=[tag.model_dump() for tag in post.tags],
         )
         db.commit()
