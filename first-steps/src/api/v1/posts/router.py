@@ -1,12 +1,21 @@
 from math import ceil
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    UploadFile,
+    status,
+)
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.core.db import get_db
 from src.core.security import get_current_user, oauth2_scheme
+from src.services.file_storage import save_uploaded_image
 
 from .repository import PostRepository
 from .schemas import PaginatedPost, PostCreate, PostPublic, PostSummary, PostUpdate
@@ -133,18 +142,26 @@ def get_post(
     status_code=status.HTTP_201_CREATED,
 )
 def create_post(
-    post: PostCreate,
+    post: Annotated[PostCreate, Depends(PostCreate.as_form)],
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[dict, Depends(get_current_user)],
+    image: UploadFile | None = None,
 ):
     repository = PostRepository(db)
+    saved = None
 
     try:
+        if image is not None:
+            saved = save_uploaded_image(image)
+
+        image_url = saved["url"] if saved else None
+
         post = repository.create_post(
             title=post.title,
             content=post.content,
             author=user,
             tags=[tag.model_dump() for tag in post.tags],
+            image_url=image_url,
         )
         db.commit()
         db.refresh(post)
