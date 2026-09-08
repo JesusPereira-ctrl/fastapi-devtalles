@@ -36,6 +36,7 @@ class PostORM(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(UTC))
     author_id: Mapped[int | None] = mapped_column(ForeignKey("authors.id"))
     author: Mapped[AuthorORM | None] = relationship(back_populates="posts")

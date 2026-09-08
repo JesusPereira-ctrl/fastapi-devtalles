@@ -1,5 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 
+from fastapi import Form
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
@@ -23,6 +24,7 @@ class PostBase(BaseModel):
     content: str
     tags: list[Tag] | None = Field(default_factory=list)  # []
     author: Author | None = None
+    image_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -49,6 +51,16 @@ class PostCreate(BaseModel):
         if "spam" in value.lower():
             raise ValueError("El titulo no puede contener la palabra: 'spam'")
         return value
+
+    @classmethod
+    def as_form(
+        cls,
+        title: Annotated[str, Form(min_length=3)],
+        content: Annotated[str, Form(min_length=10)],
+        tags: Annotated[list[str] | None, Form()],
+    ):
+        tag_objs = [Tag(name=t) for t in (tags or [])]
+        return cls(title=title, content=content, tags=tag_objs)
 
 
 class PostUpdate(BaseModel):
