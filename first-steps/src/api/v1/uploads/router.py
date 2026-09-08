@@ -27,4 +27,8 @@ async def save_file(file: UploadFile):
         "file_name": saved["file_name"],
         "content_type": saved["content_type"],
         "url": saved["url"],
+        # "size": saved["size"],
+        # "chunk_size_used": saved["chunk_size_used"],
+        # "chunk_calls": saved["chunk_calls"],
+        # "chunk_sizes_sample": saved["chunk_sizes_sample"],
     }
